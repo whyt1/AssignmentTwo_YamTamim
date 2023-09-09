@@ -361,3 +361,7 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/UserSettings
+/Temp
+/Library
+/AssignmentTwo_YamTamim.rar
