@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
 
 public class SC_GameData : MonoBehaviour
@@ -165,24 +166,39 @@ public class SC_GameData : MonoBehaviour
 
     private void InitGameWorld()
     {
-        gameWorld = new();  
-        foreach (Containers _con in Enum.GetValues(typeof(Containers)))
+        gameWorld = new();
+        GameObject[] _ = GameObject.FindGameObjectsWithTag("Containers");
+        foreach (GameObject obj in _)
         {
-            switch (_con)
+            CardContainer Container;
+            if (!Enum.TryParse(obj.name, true, out Containers key))
+            {
+                Debug.LogError($"Failed to Initialize game world! couldnt parse container name: {obj.name}");
+                return;
+            }
+            if (gameWorld.ContainsKey(key))
+            {
+                Debug.LogError("Duplicate game world card container");
+                return;
+            }
+            switch (key)
             {
                 case Containers.Deck:
-                    AddContainer<SC_Deck>(Containers.Deck);
+                    Container = obj.InitComponent<SC_Deck>();
                     break;
-
-
 
                 default:
-                    break;
-
+                    Debug.LogError($"Failed to Initialize game world! could not find component type for: {obj.name}");
+                    return;
             }
+            
+            gameWorld.Add(key, Container);
         }
     }
-
+    
+    #endregion
+}
+    /*
     /// <summary>
     /// Adds a new Container to the game world dict <see cref="gameWorld"/>.
     /// <para></para>
@@ -191,7 +207,7 @@ public class SC_GameData : MonoBehaviour
     private void AddContainer<T>(Containers conEnum) where T : CardContainer
     {
         GameObject locObj = new(conEnum.ToString(), typeof(T));
-        T locLinkedList = locObj.InitComponent<CardContainer>() as T;
+        T locLinkedList = locObj.InitComponent<T>() as T;
         if (locLinkedList == null) {
             Debug.LogError($"Failed to Add Container!");
             return;
@@ -202,6 +218,7 @@ public class SC_GameData : MonoBehaviour
         }
         else gameWorld.Add(conEnum, locLinkedList);
     }
-
-    #endregion
+    
+    
 }
+*/

@@ -50,9 +50,9 @@ public class CardView // : ScriptableObject
     [SerializeField]
     private float epsilon;
     [SerializeField]
-    private static float dragSpeed;
+    private float dragSpeed;
     [SerializeField]
-    private static float repositionSpeed;
+    public float repositionSpeed;
     [SerializeField]
     private Vector2 targetPosition;
     [SerializeField]
@@ -61,7 +61,7 @@ public class CardView // : ScriptableObject
     private bool isDragged;
 
     [Space]
-    [Header("Rotation")]
+    [Header("CurrentRotation")]
     [SerializeField]
     private float initalYRotation;
     [SerializeField]
@@ -135,7 +135,7 @@ public class CardView // : ScriptableObject
     public Vector3 CurrentScale {
         get => (transform != null) ? transform.localScale : Vector3.one;
         set { if (transform != null) { transform.localScale = value; } }
-}
+    }
     public bool IsZoomed { get => isZoomed; set { isZoomed = value; UpdateZoom(); UpdateSortOrder(); } }
 
     // Position
@@ -150,25 +150,27 @@ public class CardView // : ScriptableObject
     /// </summary>
     public Vector2 TargetPosition {
         get => targetPosition;
-        set { targetPosition = value; 
-              isMoving = true; 
-        } 
+        set { targetPosition = value;
+            isMoving = true;
+        }
     }
-    public Vector2 CurrentPosition { get => Rigidbody != null ? Rigidbody.position : default; }  
-    private float Distance { get => (targetPosition - CurrentPosition).magnitude; } 
+    public Vector2 CurrentPosition { get => Rigidbody != null ? Rigidbody.position : default; }
+    private float Distance { get => (targetPosition - CurrentPosition).magnitude; }
     private Vector2 Direction { get => (targetPosition - CurrentPosition).normalized; }
     public bool IsMoving { get => isMoving; }
     public bool FixPerspective { get => fixPerspective; set { fixPerspective = value; UpdatePerspective(); } }
 
-    // Rotation & Face 
+    // CurrentRotation & Face 
     private string CurrentSprite { get => IsFaceUp ? frontSpriteName : backSpriteName; }
+
     /// <summary>
     /// Flag for 180 degrees rotation in y angle 
     /// </summary>
     public bool IsFaceUp {
-        get => 90 <= CurrentRotation.y && CurrentRotation.y <= 270; 
+        get => 90 <= CurrentRotation.y && CurrentRotation.y <= 270;
         set { isFaceUp = value; isRotating = true; UpdateRotation(); }
     }
+
     /// <summary>
     /// Triggers rotation to given angles. 
     /// <para>
@@ -178,9 +180,9 @@ public class CardView // : ScriptableObject
     public Vector3 TargetRotation {
         get => targetRotation;
         set { targetRotation = isFaceUp ? new Vector3(value.x, initalYRotation + 180, -1 * value.z)
-                                        : new Vector3(value.x, initalYRotation, value.z); 
-              tarRot = Quaternion.Euler(targetRotation);
-              isRotating = true; 
+                                        : new Vector3(value.x, initalYRotation, value.z);
+            tarRot = Quaternion.Euler(targetRotation);
+            isRotating = true;
         }
     }
     public Vector3 CurrentRotation { get => transform != null ? transform.rotation.eulerAngles : default; }
@@ -200,10 +202,10 @@ public class CardView // : ScriptableObject
             return;
         }
         if (isZoomed) {
-            CurrentScale.Set(maxZoom.x, maxZoom.y, CurrentScale.z);
+            CurrentScale.Set(maxZoom.x, maxZoom.y, maxZoom.z);
         }
         else {
-            CurrentScale.Set(1, 1, CurrentScale.z);
+            CurrentScale.Set(1, 1, 1);
         }
     }
 
@@ -260,8 +262,8 @@ public class CardView // : ScriptableObject
     public void SetCurrentPosition(Vector2 newPosition)
     {
         if (newPosition == null || Rigidbody == null) {
-            Debug.Log($"Failed to Set Current Position! new Position: { newPosition } Rigidbody: { Rigidbody }");
-            return; 
+            Debug.Log($"Failed to Set Current Position! new Position: {newPosition} Rigidbody: {Rigidbody}");
+            return;
         }
         Rigidbody.position = new(newPosition.x, newPosition.y);
     }
@@ -275,15 +277,20 @@ public class CardView // : ScriptableObject
     private void UpdatePerspective()
     {
         if (!isMoving || Rigidbody == null) { return; }
-        if (!fixPerspective)
+        float newScale;
+        if (fixPerspective)
         {
-            CurrentScale.Set(1, 1, CurrentScale.z);
+            Vector2 normalizedPosition = CurrentPosition / SC_GameData.Instance.screenSize;
+            // max scale at 0,-1 
+            newScale = -perspectiveScaler * normalizedPosition.y + 1;
+        }
+        else 
+        {
+            newScale = 1;
             return;
         }
-        Vector2 normalizedPosition = CurrentPosition / SC_GameData.Instance.screenSize;
-        // max scale at 0,-1 
-        float newScale = -perspectiveScaler * normalizedPosition.y + 1;
-        CurrentScale = new(newScale, newScale, CurrentScale.z);
+
+        CurrentScale = Vector3.one * newScale;
     }
 
     /// <summary>
@@ -314,7 +321,7 @@ public class CardView // : ScriptableObject
     }
 
     /// <summary>
-    /// Force the card into given Rotation with no transition.
+    /// Force the card into given CurrentRotation with no transition.
     /// </summary>
     public void SetCurrentRotation(Vector3 newRotation)
     {
@@ -323,7 +330,7 @@ public class CardView // : ScriptableObject
                                               newRotation.z);
     }
     /// <summary>
-    /// Used in update Rotation
+    /// Used in update CurrentRotation
     /// </summary>
     private void SetCurrentRotation(Quaternion newRotation)
     {

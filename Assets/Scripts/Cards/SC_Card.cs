@@ -1,4 +1,5 @@
 using System;
+using TMPro;
 using UnityEngine;
 /// <summary>
 /// Script for a single card object. 
@@ -51,96 +52,29 @@ public class SC_Card : MonoBehaviour
         Rigidbody.isKinematic = true;
         Collider.isTrigger = true;
 
+        node = new();
+        if (node == null) { Debug.LogError("Failed to create card! could not create Card Node"); }
         view = new(name, size, spriteRenderer, Rigidbody, transform);
         if (view == null) { Debug.LogError("Failed to create card! could not create Card View."); }
     }
 
     #endregion
 
-    #region Linked List 
-
-    // Fields
-    [Header("Container")]
-    [SerializeField]
-    private CardContainer home;
-    [SerializeField]
-    private int index;
-    [SerializeField]
-    private SC_Card next;
-    [SerializeField]
-    private SC_Card prev;
-
-    // Properties
-
-    /// <summary>
-    /// The card's index in the linked list <para></para>
-    /// Automatically sets transform hierarchy on assignment.
-    /// </summary>
-    public int Index
-    {
-        get => index;
-        set { index = value;
-              transform.SetSiblingIndex(value);
-        }
-    }
-
-    /// <summary>
-    /// The next card in the linked list <para></para>
-    /// Automatically sets double link on assignment.
-    /// </summary>
-    public SC_Card Next
-    {
-        get => next;
-        set {
-            if (value != null) { value.prev = this; }
-            next = value;
-        }
-    }
-
-    /// <summary>
-    /// The prev card in the linked list <para></para>
-    /// Automatically sets double link on assignment.
-    /// </summary>
-    public SC_Card Prev
-    {
-        get => prev;
-        set { 
-            if (value != null) { value.next = this; }
-            prev = value;
-        }
-    }
-
-    // Methods
-    public void Swap(SC_Card other)
-    {
-        if (other == null) {
-            Debug.LogError($"Failed to swap card nodes! {this} and other, other is null");
-            return;
-        }
-
-        SC_Card 
-        thisNext = this.Next, otherNext = other.Next,
-        thisPrev = this.Prev, otherPrev = other.Prev;
-
-        this.Next = otherNext; other.Next = thisNext;
-        this.Prev = otherPrev; other.Prev = thisPrev;
-        
-    }
-
-    #endregion
-
     #region Fields 
-
-    [Space]    
     private Containers enumHome;
+    [Header("General")]
+    [SerializeField]
+    private bool forceUpdate;
     [SerializeField]
     private CardTypes type;
     [SerializeField]
     private Vector2 size;
+    [Space]
+    [SerializeField]
+    private CardNode node;  
     [SerializeField]
     private CardView view;
-    [SerializeField]
-    private bool forceUpdate;
+    public float deckSlowDown =  4;
 
     #endregion
 
@@ -155,8 +89,8 @@ public class SC_Card : MonoBehaviour
         get => enumHome; 
         set {
             enumHome = value;
-            home = SC_GameData.Instance.GetContainer(value);
-            transform.parent = home != null ? home.transform : null;
+            node.home = SC_GameData.Instance.GetContainer(value);
+            transform.parent = node.home != null ? node.home.transform : null;
         }
     }
 
@@ -168,6 +102,84 @@ public class SC_Card : MonoBehaviour
 
     #endregion
 
+    #region Linked List API
+
+    /// <summary>
+    /// The card's index in the linked list <para></para>
+    /// Automatically sets transform hierarchy on assignment.
+    /// </summary>
+    public int Index
+    {
+        get => node.index;
+        set
+        {
+            node.index = value;
+            transform.SetSiblingIndex(value);
+        }
+    }
+
+    /// <summary>
+    /// The next card in the linked list <para></para>
+    /// Automatically sets double link on assignment.
+    /// </summary>
+    public SC_Card Next
+    {
+        get => node.next;
+        set
+        {
+            if (value != null) { value.node.prev = this; }
+            node.next = value;
+        }
+    }
+
+    /// <summary>
+    /// The prev card in the linked list <para></para>
+    /// Automatically sets double link on assignment.
+    /// </summary>
+    public SC_Card Prev
+    {
+        get => node.prev;
+        set
+        {
+            if (value != null) { value.node.next = this; }
+            node.prev = value;
+        }
+    }
+
+    // Methods
+    public void Swap(SC_Card other)
+    {
+        if (other == null || this == other)
+        {
+            Debug.LogError($"Failed to swap card nodes! {this} and {other}, other is null or this == other");
+            return;
+        }
+
+        SC_Card
+        thisNext = this.Next, otherNext = other.Next,
+        thisPrev = this.Prev, otherPrev = other.Prev;
+        // adjacent nodes 
+        if (otherNext == this)
+        {
+            this.Next = other; this.Prev = otherPrev;
+            other.Prev = this; other.Next = thisNext;
+        }
+        else if (otherPrev == this)
+        {
+            this.Prev = other; this.Next = otherNext;
+            other.Next = this; other.Prev = thisPrev;
+        }
+        // non adjacent nodes 
+        else
+        {
+            this.Next = otherNext; this.Prev = otherPrev;
+            other.Next = thisNext; other.Prev = thisPrev;
+        }
+
+    }
+
+    #endregion
+
     #region View API
 
     public bool FixPerspective
@@ -176,7 +188,6 @@ public class SC_Card : MonoBehaviour
         set { if (view != null) view.FixPerspective = value; }
     }
 
-
     public bool IsFaceUp
     {
         get => (view != null) ? view.IsFaceUp : default;
@@ -184,18 +195,18 @@ public class SC_Card : MonoBehaviour
     }
 
     /// <summary>
-    /// Get current Rotation <para></para>
-    /// Set current Rotation with no transition.
+    /// Get current Current Rotation <para></para>
+    /// Set current Current Rotation with no transition.
     /// </summary>
-    public Vector3 Rotation
+    public Vector3 CurrentRotation
     {
         get => (view != null) ? view.CurrentRotation : default;
         set { if (view != null) view.SetCurrentRotation(value); }
     }
 
     /// <summary>
-    /// Get target Rotation <para></para>
-    /// Set target Rotation triggering movment.
+    /// Get target Current Rotation <para></para>
+    /// Set target Current Rotation triggering movment.
     /// </summary>
     public Vector3 TargetRotation
     {
@@ -241,20 +252,21 @@ public class SC_Card : MonoBehaviour
     void OnMouseDown()
     {
         view.IsDragged = true;
-        view.TargetRotation = Vector3.zero;
-        view.IsFaceUp = true;
+        // view.TargetRotation = Vector3.zero;
+        // view.IsFaceUp = true;
     }
     void OnMouseUp()
     {
         view.IsDragged = false;
         view.TargetRotation =  new(45, 0, -15);
-        view.TargetPosition = Vector3.zero;
-        view.IsFaceUp = false;
+        // view.TargetPosition = Vector3.zero;
+        // view.IsFaceUp = false;
     }
     void OnMouseDrag()
     {
         view.TargetPosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
     }
+
     // Updates (Keep Game Logic Out! only run with triggers when needed)
     void FixedUpdate()
     {
@@ -262,6 +274,7 @@ public class SC_Card : MonoBehaviour
             Debug.LogError($"Failed to Update {name}! View is null.");
             return; 
         }
+
         if (view.IsMoving || forceUpdate) { view.UpdatePosition(); }
         if (view.IsRotating || forceUpdate) { view.UpdateRotation(); }
     }

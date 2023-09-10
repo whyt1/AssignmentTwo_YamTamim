@@ -64,7 +64,8 @@
     <Compile Include="Assets\Scripts\Game\SC_GameLogic.cs" />
     <Compile Include="Assets\Scripts\Game\GameStates.cs" />
     <Compile Include="Assets\Scripts\Game\SC_GameData.cs" />
-    <Compile Include="Assets\Scripts\Card Containers\CardNodes.cs" />
+    <Compile Include="Assets\Scripts\Card Containers\ContainerSettings.cs" />
+    <Compile Include="Assets\Scripts\Cards\CardNodes.cs" />
     <Compile Include="Assets\Scripts\Card Containers\CardContainer.cs" />
     <Compile Include="Assets\Scripts\Utility\GameObjectExtensions.cs" />
     <Compile Include="Assets\Scripts\Card Containers\SC_Deck.cs" />

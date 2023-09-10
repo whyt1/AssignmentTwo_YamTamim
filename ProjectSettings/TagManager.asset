@@ -6,8 +6,7 @@ TagManager:
   tags:
   - UnityObjects
   - GameData
-  - Deck
-  - Discards
+  - Containers
   layers:
   - Default
   - TransparentFX
