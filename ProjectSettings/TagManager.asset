@@ -7,6 +7,9 @@ TagManager:
   - UnityObjects
   - GameData
   - Containers
+  - GameLogic
+  - Characters
+  - ActionManager
   layers:
   - Default
   - TransparentFX

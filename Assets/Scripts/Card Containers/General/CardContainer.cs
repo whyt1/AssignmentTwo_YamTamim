@@ -1,4 +1,6 @@
 using System;
+using System.Reflection;
+using Unity.VisualScripting;
 using UnityEngine;
 
 /// <summary>
@@ -12,6 +14,8 @@ public abstract class CardContainer : MonoBehaviour
 
     [SerializeField]
     public static int maxCapacitiy = 57;
+
+    public SC_Card draggedCard;
 
     [SerializeField]
     public bool ForceIntoPosition;
@@ -56,7 +60,7 @@ public abstract class CardContainer : MonoBehaviour
 
     #region Logic
 
-    private void InitVariables()
+    public virtual void InitVariables()
     {
         head = null;
         tail = null;
@@ -64,37 +68,65 @@ public abstract class CardContainer : MonoBehaviour
         CS.Container = Containers.error;
         CS.stackDirection = Vector2.zero;
 
-        CS.floor = Vector2.zero;
+        CS.Origin = Vector2.zero;
         CS.offsetDistance = 0;
 
         CS.originRotation = Vector3.zero;
         CS.offsetRotation = Vector3.zero;
     }
 
-    protected void ResetContainer()
+    public virtual void ResetContainer()
     {
         SetNodeBasedOnPrev(Tail);
         PropagateUpdatesToHead(Tail);
+    }
+
+    /// <summary>
+    /// shuffle the Container using the Fisher-Yates SetUpShuffle algorithm
+    /// </summary>
+    public void Shuffle()
+    {
+        if (Tail == null || Head == null)
+        {
+            Debug.LogError("Failed to SetUpShuffle! list is empty? tail or head null");
+        }
+        SC_Card current, random, next;
+        int i = 0;
+        current = Head;
+        while (current != null && i < MaxCapacitiy)
+        {
+            next = current.Prev;
+
+            // get a random card from the list
+            random = GetRandomCard(count - 1 - i);
+            if (random == null) { Debug.LogError("Failed to shuffle, got null on random"); return; }
+            // swap current and random cards 
+            current.Swap(random);
+            // move on to next card
+            current = next;
+            i++;
+        }
     }
 
     #endregion
 
     #region Properties
 
-    protected ContainerSettings CS { get => containerSettings; }
+    public ContainerSettings CS { get => containerSettings; }
 
     public static int MaxCapacitiy { get => maxCapacitiy; }
 
     public SC_Card Tail {
         get => tail;
-        protected set { tail = value; }
+        set { tail = value; }
     }
     public SC_Card Head {
         get => head;
-        protected set { head = value; }
+        set { head = value; }
     }
 
     public Vector2 StackDirection { get => CS.stackDirection.normalized; }
+    public SC_Card DraggedCard { get => draggedCard; set => draggedCard = value; }
 
     #endregion
 
@@ -105,8 +137,12 @@ public abstract class CardContainer : MonoBehaviour
     /// <summary>
     /// Removes a node from the list, if needed propagate change to the rest of the list
     /// </summary>
-    protected void Remove(SC_Card node, bool propagate)
+    public virtual void Remove(SC_Card node)
     {
+        if (node == null || node.Home != CS.Container) { 
+            Debug.LogError("Failed to Remove card! null or not in container."); 
+            return; 
+        }
         // connect prev to next
         if (node.Prev != null) {
             node.Prev.Next = node.Next;
@@ -121,16 +157,11 @@ public abstract class CardContainer : MonoBehaviour
         else {
             Head = node.Prev;
         }
-        // update list
-        if (propagate)
-        {
-            PropagateUpdatesToTail(node);
-            PropagateUpdatesToHead(node);
-        }
         // remove node
         node.Next = null;
         node.Prev = null;
         count--;
+        PropagateUpdatesToHead(Tail);
     }
 
     /// <summary>
@@ -138,7 +169,7 @@ public abstract class CardContainer : MonoBehaviour
     /// </para>
     /// If toNext is null inserts as new head.
     /// </summary>
-    protected void InsertBefore(SC_Card node, SC_Card toNext = null)
+    public virtual void InsertBefore(SC_Card node, SC_Card toNext = null)
     {
         if (node == toNext || node == null) {
             Debug.LogError(@$"Failed to insert node! 
@@ -151,6 +182,7 @@ public abstract class CardContainer : MonoBehaviour
         node.Home = CS.Container;
         node.IsFaceUp = CS.KeepCardsFaceUp;
         node.FixPerspective = CS.FixPerspective;
+        node.OnHoverOffset = CS.OnHoverOffset;
 
         // container is empty
         if (Head == null && Tail == null)
@@ -181,6 +213,7 @@ public abstract class CardContainer : MonoBehaviour
             node.Next = toNext;
         }
         count++;
+        // SetNodeBasedOnPrev(node);
     }
 
     // Position, CurrentRotation & Sorting order updates
@@ -188,19 +221,23 @@ public abstract class CardContainer : MonoBehaviour
     /// <summary>
     /// Sets card node position, rotation and sorting order based on its prev
     /// <para>
-    /// if node is tail set to origin </para>
+    /// if node is tail set to Origin </para>
     /// </summary>
-    protected void SetNodeBasedOnPrev(SC_Card node)
+    public void SetNodeBasedOnPrev(SC_Card node)
     {
-        if (node == null || (node.Prev == null && node != Tail)) {
-            Debug.LogError($"Failed to Set Node Parameters! card node ({nameof(node)}) is null.");
+        if (node == null) {
+            Debug.LogError($"Failed to Set Node Parameters! card {node} is null.");
+            return;
+        }
+        if (node.Prev == null && node != Tail) {
+            Debug.LogError($"Failed to Set Node Parameters! card {node} has no prev without being tail.");
             return;
         }
 
-        // tail set to origin
+        // tail set to Origin
         if (node == Tail) {
             node.Index = 0;
-            node.TargetPosition = CS.floor;
+            node.TargetPosition = CS.Origin;
             node.TargetRotation = CS.originRotation;
             node.SortOrder = CS.originSortOrder;
             return;
@@ -219,7 +256,7 @@ public abstract class CardContainer : MonoBehaviour
     /// Used when moving a card in the linked list </para>
     /// Dont forget to <see cref="SetNodeBasedOnPrev(SC_Card)"/> the source itself!
     /// </summary>    
-    protected void PropagateUpdatesToHead(SC_Card source)
+    public void PropagateUpdatesToHead(SC_Card source)
     {
         if (source == null)
         {
@@ -231,13 +268,7 @@ public abstract class CardContainer : MonoBehaviour
         SC_Card current = source.Next;
         while (current != null && current.Prev != null && i < MaxCapacitiy)
         {
-            // if card would go out of bounds, update based on next
-            if (CS.ceiling.y - current.TargetPosition.y >= 0)
-            {
-                SetNodeBasedOnPrev(current);
-            }
-            else { SetNodeBasedOnNext(current); }
-            
+            SetNodeBasedOnPrev(current);
             current = current.Next;
             i++;
         }
@@ -251,19 +282,19 @@ public abstract class CardContainer : MonoBehaviour
 
 
     /// <summary>
-    /// if node is head set to ceiling 
+    /// if node is head set to Ceiling 
     /// </summary>
-    protected void SetNodeBasedOnNext(SC_Card node) 
+    public void SetNodeBasedOnNext(SC_Card node) 
     {
         if (node == null || (node.Next == null && node != Head)) {
-            Debug.LogError($"Failed to Set Node Parameters! card node ({nameof(node)}) is null.");
+            Debug.LogError($"Failed to Set Node Parameters! card node is null.");
             return;
         }
-        // Head set to ceiling
+        // Head set to Ceiling
         if (node == Head)
         {
             node.Index = count;
-            node.TargetPosition = CS.ceiling;
+            node.TargetPosition = CS.Ceiling;
             node.TargetRotation = CS.originRotation + CS.offsetRotation * count;
             node.SortOrder = CS.originSortOrder + CS.offsetSortOrder * count;
             return;
@@ -274,7 +305,7 @@ public abstract class CardContainer : MonoBehaviour
         node.SortOrder = node.Next.SortOrder - CS.offsetSortOrder;
     }
 
-    protected void PropagateUpdatesToTail(SC_Card source)
+    public void PropagateUpdatesToTail(SC_Card source)
     {
         if (source == null) {
             Debug.LogError($"Failed to Propagate Updates! source card node ({nameof(source)}) is null.");
@@ -285,12 +316,7 @@ public abstract class CardContainer : MonoBehaviour
         SC_Card current = source.Prev;
         while (current != null && current.Next != null && i < MaxCapacitiy)
         {
-            // if card would go out of bounds, update based on prev
-            if (current.TargetPosition.y - CS.floor.y >= 0)
-            {
-                SetNodeBasedOnNext(current);
-            }
-            else { SetNodeBasedOnPrev(current); }
+            SetNodeBasedOnNext(current);
             current = current.Prev;
             i++;
         }
@@ -302,11 +328,12 @@ public abstract class CardContainer : MonoBehaviour
         }
     }
 
+    // General methods
 
-    protected void Clear()
+    public void Clear()
     {
         if (Tail == null) {
-            Debug.LogError("Failed to clear deck! tail is null.");
+            Debug.LogError("Failed to clear container! tail is null.");
             return;
         }
         int i = 0;
@@ -314,14 +341,15 @@ public abstract class CardContainer : MonoBehaviour
         while(current != null && i < MaxCapacitiy)  
         {
             next = current.Next;
+            Remove(current);
             Destroy(current.gameObject);
-            count--;
+            Destroy(current);
             current = next;
             i++;
         }
     }
 
-    protected SC_Card GetRandomCard(int i)
+    public SC_Card GetRandomCard(int i)
     {
         SC_Card random = Tail;
         int randomIndex = UnityEngine.Random.Range(0, i);
@@ -330,6 +358,54 @@ public abstract class CardContainer : MonoBehaviour
             random = random.Next;
         }
         return random;
+    }
+
+    public SC_Card GetCard(int index = -1, CardTypes type = CardTypes.error, string name = null)
+    {
+        if (index == -1 && type == CardTypes.error && name == null) {
+            return Head;
+        }
+        SC_Card card = Tail;
+        int i = 0;
+        while (card != null && i < MaxCapacitiy)
+        {
+            if (card.Index == index || card.name == name || card.Type == type) {
+                return card;
+            }
+            card = card.Next;
+        }
+        Debug.LogError($"Failed to find card (index: {index}, type: {type}, name: {name}) in container {this.CS.Container}");
+        return null;
+    }
+
+    /// <summary>
+    /// Used when someone explodes to make sure he has defuses and to activate them. <para>
+    /// Or when another player played to check if current player has a nope.
+    /// </para>
+    /// Not using <see cref="CardContainer.GetCard"/> becuase we want all defuses not just the first.
+    /// </summary>
+    public bool CheckHandForType(CardTypes type)
+    {
+        bool foundType = false;
+        SC_Card current = Tail; int i = 0;
+        while (current != null && i < MaxCapacitiy)
+        {
+            // set defuse active and continue 
+            if (current.Type == type)
+            {
+                current.action = type == CardTypes.Defuse ? new Defuse(current) : 
+                                 type == CardTypes.Nope   ? new Nope(current) : 
+                                 null;
+                foundType = true;
+            }
+            current = current.Next; i++;
+        }
+        return foundType;
+    }
+
+    public virtual void PositionPlayer(int numberOfPlayers)
+    {
+
     }
 
     #endregion

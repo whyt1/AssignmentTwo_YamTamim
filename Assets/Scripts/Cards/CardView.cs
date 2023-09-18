@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using Unity.VisualScripting.FullSerializer;
 using UnityEngine;
 /// <summary>
 /// <see cref="SC_Card"/> Used in card to set face and update position
@@ -26,18 +28,20 @@ public class CardView // : ScriptableObject
     [SerializeField]
     private float perspectiveScaler;
     [SerializeField]
-    private Vector3 maxZoom;
+    private bool isHovered;
     [SerializeField]
-    private bool isZoomed;
+    public Vector2 onHoverOffset;
+    [SerializeField]
+    private float fallBackDelay;
     [SerializeField]
     private Vector3 currentScale;
 
     [Space]
     [Header("Sorting Order")]
     [SerializeField]
-    public static readonly int frontSortingOrder = 100;
+    public static readonly int frontSortingOrder = 60;
     [SerializeField]
-    public static readonly int frontZ = 100;
+    public static readonly int frontZ = 60;
     [SerializeField]
     private int sortOrder;
     [SerializeField]
@@ -104,7 +108,9 @@ public class CardView // : ScriptableObject
 
         SpriteRenderer.sprite = SC_GameData.Instance.GetCardSprite(CurrentSprite);
         SpriteRenderer.size = size;
-        maxZoom = Vector3.one;
+        isHovered = false;
+        onHoverOffset = new(0,0.75f);
+        fallBackDelay = 0.25f;
         fixPerspective = true;
         perspectiveScaler = 0.5f;
 
@@ -131,17 +137,16 @@ public class CardView // : ScriptableObject
     /// <para> </para>
     /// <seealso cref="UpdateSortOrder"/>
     /// </summary>
-    public int SortOrder { get => sortOrder; set { sortOrder = value; UpdateSortOrder(); } }
+    public int SortOrder { get => sortOrder; set { sortOrder = value; UpdateSortOrder(value); } }
     public Vector3 CurrentScale {
         get => (transform != null) ? transform.localScale : Vector3.one;
         set { if (transform != null) { transform.localScale = value; } }
     }
-    public bool IsZoomed { get => isZoomed; set { isZoomed = value; UpdateZoom(); UpdateSortOrder(); } }
 
     // Position
     public bool IsDragged {
         get => isDragged;
-        set { isDragged = value; UpdateSortOrder(); }
+        set { isDragged = value; isHovered = false; UpdateSortOrder(); }
     }
     /// <summary>
     /// Triggers movment to given position 
@@ -155,8 +160,8 @@ public class CardView // : ScriptableObject
         }
     }
     public Vector2 CurrentPosition { get => Rigidbody != null ? Rigidbody.position : default; }
-    private float Distance { get => (targetPosition - CurrentPosition).magnitude; }
-    private Vector2 Direction { get => (targetPosition - CurrentPosition).normalized; }
+    private float Distance { get => (targetPosition + (isHovered ? onHoverOffset : Vector2.zero) - CurrentPosition).magnitude; }
+    private Vector2 Direction { get => (targetPosition + (isHovered ? onHoverOffset : Vector2.zero) - CurrentPosition).normalized; }
     public bool IsMoving { get => isMoving; }
     public bool FixPerspective { get => fixPerspective; set { fixPerspective = value; UpdatePerspective(); } }
 
@@ -168,7 +173,14 @@ public class CardView // : ScriptableObject
     /// </summary>
     public bool IsFaceUp {
         get => 90 <= CurrentRotation.y && CurrentRotation.y <= 270;
-        set { isFaceUp = value; isRotating = true; UpdateRotation(); }
+        set 
+        { 
+            if (isFaceUp == value) { 
+                return; 
+            }
+            isFaceUp = value;
+            TargetRotation = TargetRotation;
+        }
     }
 
     /// <summary>
@@ -179,7 +191,7 @@ public class CardView // : ScriptableObject
     /// </summary>
     public Vector3 TargetRotation {
         get => targetRotation;
-        set { targetRotation = isFaceUp ? new Vector3(value.x, initalYRotation + 180, -1 * value.z)
+        set { targetRotation = isFaceUp ? new Vector3(value.x, initalYRotation + 180, value.z) // -1 * value.z to fix flips on z when y is 180
                                         : new Vector3(value.x, initalYRotation, value.z);
             tarRot = Quaternion.Euler(targetRotation);
             isRotating = true;
@@ -188,26 +200,24 @@ public class CardView // : ScriptableObject
     public Vector3 CurrentRotation { get => transform != null ? transform.rotation.eulerAngles : default; }
     public bool IsRotating { get => isRotating; }
     private float MaxRot { get => maxRotationDuringMovment; }
+    public bool IsHovered { get => isHovered; 
+        set { if (isHovered == value) { return; }
+            isHovered = value;
+            UpdateSortOrder();
+            isMoving = true;
+        } 
+    }
+    /// <summary>
+    /// Used to delay fall back to place after hover offset to stop jumping
+    /// </summary>
+    private IEnumerator FallIntoPlace()
+    {
+        yield return new WaitForSeconds(fallBackDelay);
+    }
 
     #endregion
 
     #region Methods
-
-    /// <summary>
-    /// Updates localscale by zoom scaler 
-    /// </summary>
-    private void UpdateZoom()
-    {
-        if (Rigidbody == null) {
-            return;
-        }
-        if (isZoomed) {
-            CurrentScale.Set(maxZoom.x, maxZoom.y, maxZoom.z);
-        }
-        else {
-            CurrentScale.Set(1, 1, 1);
-        }
-    }
 
     /// <summary>
     /// Updates Sorting Order and Z position 
@@ -217,14 +227,26 @@ public class CardView // : ScriptableObject
         if (SpriteRenderer == null || transform == null) {
             return;
         };
-        SpriteRenderer.sortingOrder = isZoomed ? frontSortingOrder : SortOrder;
-        // maybe calcualte Z based on sorting order?
-        // sorting order 0 -> 56
-        // z 0 -> 0.56 ?
-        transform.position.Set(
+        SpriteRenderer.sortingOrder = isDragged ? frontSortingOrder+1 : (isHovered ? frontSortingOrder : SortOrder);
+
+        float zPosition = isDragged ? -frontZ-1 : (isHovered ? -frontZ : -SortOrder);
+        transform.position = new(
             transform.position.x,
             transform.position.y,
-            isZoomed ? frontZ : positionZ
+            zPosition
+        );
+    }
+    private void UpdateSortOrder(int _sortOrder)
+    {
+        if (SpriteRenderer == null || transform == null)
+        {
+            return;
+        };
+        SpriteRenderer.sortingOrder = _sortOrder;
+        transform.position = new(
+            transform.position.x,
+            transform.position.y,
+            -_sortOrder
         );
     }
 
@@ -245,6 +267,7 @@ public class CardView // : ScriptableObject
             );
             tarRot = Quaternion.Euler(TargetRotation);
             isMoving = false;
+            IsHovered = false;
             return;
         }
         UpdatePerspective();
@@ -287,7 +310,6 @@ public class CardView // : ScriptableObject
         else 
         {
             newScale = 1;
-            return;
         }
 
         CurrentScale = Vector3.one * newScale;

@@ -1,6 +1,6 @@
 using System;
-using TMPro;
 using UnityEngine;
+using UnityEngine.Events;
 /// <summary>
 /// Script for a single card object. 
 /// <para>
@@ -52,7 +52,9 @@ public class SC_Card : MonoBehaviour
         Rigidbody.isKinematic = true;
         Collider.isTrigger = true;
 
-        node = new();
+        actionManager = new ActionManager(_card: this);
+        if (actionManager == null) { Debug.LogError("Failed to create card! could not create Card Action Manager"); }
+        node = new(_card: this);
         if (node == null) { Debug.LogError("Failed to create card! could not create Card Node"); }
         view = new(name, size, spriteRenderer, Rigidbody, transform);
         if (view == null) { Debug.LogError("Failed to create card! could not create Card View."); }
@@ -61,6 +63,7 @@ public class SC_Card : MonoBehaviour
     #endregion
 
     #region Fields 
+
     private Containers enumHome;
     [Header("General")]
     [SerializeField]
@@ -71,14 +74,20 @@ public class SC_Card : MonoBehaviour
     private Vector2 size;
     [Space]
     [SerializeField]
+    private ActionManager actionManager;
+    [SerializeField]
+    public CardAction action;
+    [SerializeField]
     private CardNode node;  
     [SerializeField]
     private CardView view;
-    public float deckSlowDown =  4;
+    public float deckSlowDown = 4;
 
     #endregion
 
     #region Properties 
+
+    public bool IsActive { get => action != null && action.onClickDown != null; }
 
     /// <summary>
     /// Current Container of the card.
@@ -90,7 +99,7 @@ public class SC_Card : MonoBehaviour
         set {
             enumHome = value;
             node.home = SC_GameData.Instance.GetContainer(value);
-            transform.parent = node.home != null ? node.home.transform : null;
+            transform.parent = (node.home != null) ? node.home.transform : null;
         }
     }
 
@@ -99,6 +108,8 @@ public class SC_Card : MonoBehaviour
     /// Maybe use subclasses? </para>
     /// </summary>
     public CardTypes Type { get => type; }
+    private GameStates CurrentState { get => SC_GameLogic.Instance.currentState; } // get the current game state from state machine or game logic 
+    private Containers CurrentTurn { get; } // get the current turn from game logic
 
     #endregion
 
@@ -154,7 +165,11 @@ public class SC_Card : MonoBehaviour
             Debug.LogError($"Failed to swap card nodes! {this} and {other}, other is null or this == other");
             return;
         }
-
+        // reseting Head and Tail as needed
+        if (node.home.Head == this) { node.home.Head = other; }
+        else if (node.home.Head == other) { node.home.Head = this; }
+        if (node.home.Tail == this) { node.home.Tail = other; }
+        else if (node.home.Tail == other) { node.home.Tail = this; }
         SC_Card
         thisNext = this.Next, otherNext = other.Next,
         thisPrev = this.Prev, otherPrev = other.Prev;
@@ -175,12 +190,24 @@ public class SC_Card : MonoBehaviour
             this.Next = otherNext; this.Prev = otherPrev;
             other.Next = thisNext; other.Prev = thisPrev;
         }
-
+        (this.Index, other.Index) = (other.Index, this.Index);
     }
 
     #endregion
 
     #region View API
+
+    public bool IsDragged
+    {
+        get => view != null && view.IsDragged == true;
+        set {
+            if (view != null) {
+                view.IsDragged = value;
+                // card falls into place after drag
+                if (!value) { Reposition(); }
+            }
+        }
+    }
 
     public bool FixPerspective
     {
@@ -239,6 +266,18 @@ public class SC_Card : MonoBehaviour
         set { if (view != null) view.SortOrder = value; }
     }
 
+    private bool IsHovered
+    {
+        get => (view != null) ? view.IsHovered : default;
+        set { if (view != null) view.IsHovered = value; }
+    }
+
+    public Vector2 OnHoverOffset
+    {
+        get => (view != null) ? view.onHoverOffset : default;
+        set { if (view != null) view.onHoverOffset = value; }
+    }
+
     #endregion
 
     #region MonoBehaviour
@@ -248,23 +287,35 @@ public class SC_Card : MonoBehaviour
     {
         InitVariables();
     }
+
     // Input Events
     void OnMouseDown()
     {
-        view.IsDragged = true;
-        // view.TargetRotation = Vector3.zero;
-        // view.IsFaceUp = true;
+        Debug.Log($"{this} was clicked DOWN");
+        if (OnClickDown != null) { OnClickDown(); }
     }
-    void OnMouseUp()
+
+    void OnMouseUpAsButton()
     {
-        view.IsDragged = false;
-        view.TargetRotation =  new(45, 0, -15);
-        // view.TargetPosition = Vector3.zero;
-        // view.IsFaceUp = false;
+        Debug.Log($"{this} was clicked UP");
+        if (OnClickUp != null) { OnClickUp(); }
     }
+
     void OnMouseDrag()
     {
-        view.TargetPosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        if (IsDragged) { 
+            MoveOnDrag();
+            RepositionOnDrag();
+        }
+    }
+
+    void OnMouseEnter()
+    {
+        if (IsActive)
+        {
+            IsHovered = true; // used to bring card to front 
+            // is hovered automatic sets to false when reaching the front
+        }
     }
 
     // Updates (Keep Game Logic Out! only run with triggers when needed)
@@ -281,22 +332,61 @@ public class SC_Card : MonoBehaviour
 
     #endregion
 
-    #region Delegates
-    /// <summary>
-    /// <para>
-    /// Used by Action Manager to set <see cref="PossibleActions"/>.
-    /// </para>
-    /// <seealso cref="OnClickUpCard"/>
-    /// </summary>
-    public static Action<SC_Card> OnClickDownCard;
-    public static Action OnClickUpCard;
+    #region Card Actions
 
-    public static Action OnTakeBackCard;
-    public static Action GetAction = OnTakeBackCard;
-    public static Action OnGiveCard;
-    public static Action OnStealCard;
-    public static Action OnDrawCard;
-    public static Action OnPlayCard;
+    private void Reposition()
+    {
+        if (node == null | node.home == null)
+        {
+            Debug.LogError("Failed to Reposition! home container in node is null");
+            return;
+        }
+        node.home.ResetContainer();
+        // node.home.SetNodeBasedOnNext(this);
+        // node.home.PropagateUpdatesToTail(this);
+        // node.home.PropagateUpdatesToHead(this);
+    }
+
+    private void RepositionOnDrag()
+    {
+        if (Home == Containers.Deck) { return; } // cant re order deck
+        if (Prev != null && Position.x < Prev.Position.x)
+        {
+            this.Swap(Prev);
+            node.home.SetNodeBasedOnNext(Next);
+        }
+        else if (Next != null && Next.Position.x < Position.x)
+        {
+            Next.Swap(this);
+            node.home.SetNodeBasedOnPrev(Prev);
+        }
+    }
+
+    private void MoveOnDrag()
+    {
+        TargetPosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+    }
+
+
+    public void ChangeHome(Containers _newHome)
+    {
+        if (_newHome == Containers.error) { return; }
+        CardContainer newHome = SC_GameData.Instance.GetContainer(_newHome);
+        if (newHome == null || node == null)
+        {
+            Debug.LogError($"Failed to Change Home! new home: {newHome}, card node: {node}");
+            return;
+        }
+
+        CardContainer oldHome = SC_GameData.Instance.GetContainer(enumHome);
+        if (oldHome != null) { oldHome.Remove(this); }
+        newHome.InsertBefore(this);
+        newHome.ResetContainer();   
+    }
+
+    public UnityAction OnClickDown { get => action != null ? action.onClickDown : null; }
+
+    public UnityAction OnClickUp { get => action != null ? action.onClickUp : null; }
     #endregion
 
 }

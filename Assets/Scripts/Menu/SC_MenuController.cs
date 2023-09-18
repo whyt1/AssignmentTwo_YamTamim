@@ -5,6 +5,9 @@ using UnityEngine.UI;
 public class SC_MenuController : MonoBehaviour
 {
     #region Delegates
+    public delegate void StartGame();
+    public static StartGame OnStartGame;
+
     public delegate void ChangeScreen(string _screen);
     public static ChangeScreen OnChangeScreen;
 
@@ -16,6 +19,10 @@ public class SC_MenuController : MonoBehaviour
     #endregion
 
     #region Logic
+    public void Btn_StartGame()
+    {
+        if (OnStartGame != null) { OnStartGame(); }
+    }
     public void Btn_ChangeScreen(string _ScreenName)
     {
         if (OnChangeScreen != null) { OnChangeScreen(_ScreenName); }

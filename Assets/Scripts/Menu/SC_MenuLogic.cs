@@ -17,12 +17,14 @@ public class SC_MenuLogic : MonoBehaviour
     #region MonoBehaviour
     void OnEnable()
     {
+        SC_MenuController.OnStartGame += OnStartGame;
         SC_MenuController.OnChangeScreen += OnChangeScreen;
         SC_MenuController.OnOpenLink += OnOpenLink;
         SC_MenuController.OnAdjustVolume += OnAdjustVolume;
     }
     void OnDisable()
     {
+        SC_MenuController.OnStartGame -= OnStartGame;
         SC_MenuController.OnChangeScreen -= OnChangeScreen;
         SC_MenuController.OnOpenLink -= OnOpenLink;
         SC_MenuController.OnAdjustVolume -= OnAdjustVolume;
@@ -65,6 +67,19 @@ public class SC_MenuLogic : MonoBehaviour
     #endregion
 
     #region Events
+    private void OnStartGame()
+    {
+        var GameWorld = SC_GameData.Instance.GetUnityObject("GameWorld");
+        if (GameWorld == null){
+            Debug.LogError("Failed to Start Game! GameWorld is null in menu logic");
+            return;
+        }
+        GameWorld.SetActive(true);
+        if (SC_GameData.Instance.GetUnityObject("Screen_" + ScreensStack.Peek()) != null)
+            SC_GameData.Instance.GetUnityObject("Screen_" + ScreensStack.Peek()).SetActive(false);
+        if (SC_GameData.Instance.GetUnityObject("Btn_StartGame") != null)
+            SC_GameData.Instance.GetUnityObject("Btn_StartGame").SetActive(false);
+    }
     private void OnChangeScreen(string _screen)
     {
         Screens _toScreen = ParseScreens(_screen);

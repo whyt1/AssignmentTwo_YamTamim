@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.TextCore.Text;
 
 public class SC_GameData : MonoBehaviour
 {
@@ -25,11 +26,15 @@ public class SC_GameData : MonoBehaviour
     private Dictionary<string, GameObject> unityObjects;
 
     /// <summary>
-    /// 
+    /// Holds all the possible card containers, used when a script wants to refrence a container <para>
+    /// </para>
+    /// For example when a card wants to change container etc.
     /// </summary>
     private Dictionary<Containers, CardContainer> gameWorld;
 
     public Vector2 screenSize;
+
+    List<GameObject> characters;
 
     #endregion
 
@@ -54,6 +59,19 @@ public class SC_GameData : MonoBehaviour
     #endregion
 
     #region API
+
+    public List<GameObject> Characters(int n) 
+    {
+        characters = new List<GameObject>();
+        for (int i = n - 1; i >= 0; i--)
+        {
+            GameObject _char = new("char_" + (i + 1)); 
+            _char.transform.position = screenSize + Vector2.one;
+            _char.InitComponent<SpriteRenderer>().sprite = Resources.Load<Sprite>("Sprites/Characters/Sprite_Character_" + (i + 1));
+            characters.Add(_char);
+        }
+        return characters;
+    } 
 
     public List<GameObject> UnityObjects { get => new(unityObjects.Values); }
 
@@ -94,6 +112,9 @@ public class SC_GameData : MonoBehaviour
             return cardSprites[_name];
         return null;
     }
+
+
+    public List<CardContainer> GameWorld { get => new(gameWorld.Values); }
 
     /// <summary>
     /// Get unity object representing Container from <see cref="gameWorld"/>
@@ -186,7 +207,27 @@ public class SC_GameData : MonoBehaviour
                 case Containers.Deck:
                     Container = obj.InitComponent<SC_Deck>();
                     break;
-
+                case Containers.PlayerHand:
+                    Container = obj.InitComponent<SC_PlayerHand>();
+                    break;
+                case Containers.Center:
+                    Container = obj.InitComponent<SC_Center>();
+                    break;
+                case Containers.Discards:
+                    Container = obj.InitComponent<SC_Discards>();
+                    break;
+                case Containers.OpponentHand1:
+                    Container = obj.InitComponent<SC_OpponentHand1>();
+                    break;
+                case Containers.OpponentHand2:
+                    Container = obj.InitComponent<SC_OpponentHand2>();
+                    break;
+                case Containers.OpponentHand3:
+                    Container = obj.InitComponent<SC_OpponentHand3>();
+                    break;
+                case Containers.OpponentHand4:
+                    Container = obj.InitComponent<SC_OpponentHand4>();
+                    break;
                 default:
                     Debug.LogError($"Failed to Initialize game world! could not find component type for: {obj.name}");
                     return;

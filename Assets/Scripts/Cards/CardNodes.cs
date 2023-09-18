@@ -13,15 +13,17 @@ public class CardNode
     public CardContainer home;
     public int index;
     public SC_Card prev;
+    public SC_Card card;
     public SC_Card next;
 
     #endregion
     
     #region Constractors
 
-    public CardNode(SC_Card _prev = null, SC_Card _next = null, CardContainer _home = null, int _index = 0)
+    public CardNode(SC_Card _prev = null, SC_Card _card = null, SC_Card _next = null, CardContainer _home = null, int _index = 0)
     {
         next = _next;
+        card = _card;
         prev = _prev;
         index = _index;
         home = _home;
@@ -33,7 +35,7 @@ public class CardNode
 
     public override string ToString()
     {
-        return $"{prev} <-> {next}"; 
+        return $"{prev} <-> {card} <-> {next}"; 
     }
 
     #endregion

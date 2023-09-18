@@ -14,12 +14,14 @@ public class ContainerSettings
     public bool KeepCardsFaceUp;
     [SerializeField]
     public bool FixPerspective;
+    [SerializeField]
+    public Vector2 OnHoverOffset;
 
     [Header("Positions")]
     [SerializeField]
-    public Vector2 ceiling;
+    private Vector2 ceilingRelative;
     [SerializeField]
-    public Vector2 floor;
+    public Vector2 originRelative;
     [SerializeField]
     [Range(-1f, 1f)]
     public float offsetDistance;
@@ -35,10 +37,7 @@ public class ContainerSettings
     public int originSortOrder;
     [SerializeField]
     public int offsetSortOrder;
+
+    public Vector2 Origin { get => originRelative * SC_GameData.Instance.screenSize; set => originRelative = value / new Vector2(6.667f, 5); }
+    public Vector2 Ceiling { get => ceilingRelative * SC_GameData.Instance.screenSize; set => ceilingRelative = value / new Vector2(6.667f, 5); }
 }
-/*
-public void RotateIntoDeck(SC_Card node)
-{
-    node.TargetRotation = 1 / (1 + MathF.Abs(node.Position.x - tempOrigin.x) * nodeFlipRange) * containerSettings.originRotation;
-}
-*/
