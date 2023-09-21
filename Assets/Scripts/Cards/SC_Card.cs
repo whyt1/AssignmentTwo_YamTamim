@@ -37,23 +37,25 @@ public class SC_Card : MonoBehaviour
         card.name = _name;
         card.Home = _home;
         card.type = _type;
+        card.InitVariables();
         return card;  
     }
-    private void InitVariables()
+    void InitVariables()
     {
         size = new(1.65f, 2.4f);
 
         BoxCollider2D Collider = gameObject.InitComponent<BoxCollider2D>();
         Rigidbody2D Rigidbody = gameObject.InitComponent<Rigidbody2D>();
         SpriteRenderer spriteRenderer = gameObject.InitComponent<SpriteRenderer>();
+        ActionManager actionManager = gameObject.InitComponent<ActionManager>();
 
         spriteRenderer.drawMode = SpriteDrawMode.Sliced;
         Collider.size = spriteRenderer.size = size;
         Rigidbody.isKinematic = true;
         Collider.isTrigger = true;
+        actionManager.card = this;
 
-        actionManager = new ActionManager(_card: this);
-        if (actionManager == null) { Debug.LogError("Failed to create card! could not create Card Action Manager"); }
+        if (actionManager == null || actionManager.card == null) { Debug.LogError("Failed to create card! could not create Card Action Manager"); }
         node = new(_card: this);
         if (node == null) { Debug.LogError("Failed to create card! could not create Card Node"); }
         view = new(name, size, spriteRenderer, Rigidbody, transform);
@@ -203,6 +205,7 @@ public class SC_Card : MonoBehaviour
         set {
             if (view != null) {
                 view.IsDragged = value;
+                IsHovered = false;
                 // card falls into place after drag
                 if (!value) { Reposition(); }
             }
@@ -311,7 +314,7 @@ public class SC_Card : MonoBehaviour
 
     void OnMouseEnter()
     {
-        if (IsActive)
+        if (IsActive && !IsDragged)
         {
             IsHovered = true; // used to bring card to front 
             // is hovered automatic sets to false when reaching the front
@@ -352,12 +355,16 @@ public class SC_Card : MonoBehaviour
         if (Home == Containers.Deck) { return; } // cant re order deck
         if (Prev != null && Position.x < Prev.Position.x)
         {
+            // swap with prev
             this.Swap(Prev);
+            // move prev, now next to the next spot 
             node.home.SetNodeBasedOnNext(Next);
         }
         else if (Next != null && Next.Position.x < Position.x)
         {
+            // swap with next
             Next.Swap(this);
+            // move next, now prev to the prev spot
             node.home.SetNodeBasedOnPrev(Prev);
         }
     }

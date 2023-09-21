@@ -26,6 +26,7 @@ public class Favor : CardAction
         }
         SC_Card cardToTake = opponentHand.GetRandomCard(opponentHand.count);
         cardToTake.ChangeHome(Containers.PlayerHand);
+        SC_GameLog.Instance.AddMessege($"{SC_GameLogic.Instance.currentPlayer} Played Favor on {opponent}");
     }
 
     #endregion

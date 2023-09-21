@@ -9,7 +9,7 @@ public class SC_MenuLogic : MonoBehaviour
     #region Variables
     public enum Screens
     {
-        MainMenu, Loading, Options, StudentInfo, Multiplayer, Previous
+        MainMenu, Loading, Options, StudentInfo, Multiplayer, Previous, Game
     };
     private Stack<Screens> ScreensStack;
     #endregion
@@ -75,10 +75,7 @@ public class SC_MenuLogic : MonoBehaviour
             return;
         }
         GameWorld.SetActive(true);
-        if (SC_GameData.Instance.GetUnityObject("Screen_" + ScreensStack.Peek()) != null)
-            SC_GameData.Instance.GetUnityObject("Screen_" + ScreensStack.Peek()).SetActive(false);
-        if (SC_GameData.Instance.GetUnityObject("Btn_StartGame") != null)
-            SC_GameData.Instance.GetUnityObject("Btn_StartGame").SetActive(false);
+        OnChangeScreen("Game");
     }
     private void OnChangeScreen(string _screen)
     {

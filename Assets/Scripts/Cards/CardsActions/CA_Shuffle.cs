@@ -1,27 +1,32 @@
-using System;
+﻿using System.ComponentModel;
 using UnityEngine;
-using UnityEngine.Events;
 
-[Serializable]
-public class SetUpShuffle : PlayAction
+public class Shuffle : CardAction
 {
-
     #region Constractor
 
-    public SetUpShuffle(SC_Card _card) : base(_card)
+    public Shuffle(SC_Card _card) : base(_card)
     {
-        Debug.Log($"<color=blue>Assgined {_card} with SetUp Shuffle</color>");
-        onClickUp += SetShuffleAction;
-        onClickUp += () => ChangeButtonAction(() => { Shuffle.ShuffleDeck(); ChangeStateToMyPlayOrDraw(); });
-        onClickUp += () => ChangeButtonText("Shuffle the deck!");
+        onClickUp += ShuffleDeck;
+        onClickUp += ChangeStateToMyPlayOrDraw;
     }
 
     #endregion
 
-    #region Logic
+    #region Action
 
-    public static event UnityAction SetShuffleAction;
+    public static void ShuffleDeck()
+    {
+        SC_Deck _deck = SC_GameData.Instance.GetContainer(Containers.Deck) as SC_Deck;
+        if (_deck == null)
+        {
+            Debug.LogError("Failed to shuffle deck! deck is null");
+            return;
+        }
+        _deck.Shuffle();
+        _deck.ResetContainer();
+        SC_GameLog.Instance.AddMessege($"{SC_GameLogic.Instance.currentPlayer} Played Shuffle");
+    }
 
     #endregion
-
 }

@@ -106,14 +106,14 @@ public class SC_PlayerHand : CardContainer
 
     public override void Remove(SC_Card node)
     {
-        base.Remove(node);
         if (count != 1)
         {
             CS.Origin += StackDirection * CS.offsetDistance / 2;
             CS.Ceiling -= StackDirection * CS.offsetDistance / 2;
             CS.originRotation += CS.offsetRotation / 2;
-            ResetContainer();   
         }
+        base.Remove(node);
+        ResetContainer();
     }
 
     #endregion

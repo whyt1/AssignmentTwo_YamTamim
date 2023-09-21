@@ -8,8 +8,8 @@ TagManager:
   - GameData
   - Containers
   - GameLogic
-  - Characters
   - ActionManager
+  - GameLog
   layers:
   - Default
   - TransparentFX
@@ -46,4 +46,7 @@ TagManager:
   m_SortingLayers:
   - name: Default
     uniqueID: 0
+    locked: 0
+  - name: OverLay
+    uniqueID: 2836179825
     locked: 0

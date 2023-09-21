@@ -56,8 +56,14 @@ public class SC_ButtonManager : MonoBehaviour
                 ChangeButtonText("ERROR! \nClick to Restart");
                 return;
             case GameStates.MyPlayOrDraw:
+                SC_Deck _deck = SC_GameData.Instance.GetContainer(Containers.Deck) as SC_Deck;
+                if (_deck == null)
+                {
+                    Debug.LogError("Failed to end explode! deck is null");
+                    return;
+                }
                 ChangeButtonAction(null);
-                ChangeButtonText("Play Cards Or Draw");
+                ChangeButtonText("Play Cards \nOr Draw");
                 return;
             case GameStates.MyTakeAction:
                 ChangeButtonAction(null);

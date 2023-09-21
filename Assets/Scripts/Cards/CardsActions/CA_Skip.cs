@@ -10,9 +10,12 @@ public class Skip : PlayAction
 
     public Skip(SC_Card _card) : base(_card)
     {
-        Debug.Log($"<color=blue>Assgined {_card} with Skip</color>");
-        onClickUp += () => ChangeButtonAction(SC_GameLogic.Instance.OnEndTurn);
-        onClickUp += () => ChangeButtonText("Click To Skip Turn");
+        // Debug.Log($"<color=blue>Assgined {_card} with Skip</color>");
+        onClickUp += () => ChangeButtonAction(() => { 
+            SC_GameLog.Instance.AddMessege($"{SC_GameLogic.Instance.currentPlayer} Played Skip"); 
+            ChangeStateToMyEndTurn(); 
+        });
+        onClickUp += () => ChangeButtonText("Click To Skip Draw");
     }
 
     #endregion

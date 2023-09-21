@@ -1,27 +1,32 @@
-using System;
-using UnityEngine;
-using UnityEngine.Events;
+﻿using UnityEngine;
 
-[Serializable]
-public class SetUpSeeTheFuture : PlayAction
+internal class SeeTheFuture : CardAction
 {
+    static int depth = 3;
 
     #region Constractor
 
-    public SetUpSeeTheFuture(SC_Card _card) : base(_card)
+    public SeeTheFuture(SC_Card _card) : base(_card)
     {
-        Debug.Log($"<color=blue>Assgined {_card} with See The Future</color>");
-        onClickUp += SetSeeTheFutureAction;
-        onClickUp += () => ChangeButtonAction(() => { SeeTheFuture.SeeTheFutureDeck(); ChangeStateToMyPlayOrDraw(); });
-        onClickUp += () => ChangeButtonText("See The Future!");
+        onClickUp += SeeTheFutureDeck;
+        onClickUp += ChangeStateToMyPlayOrDraw;
     }
 
     #endregion
 
-    #region Logic
+    #region Action
 
-    public static event UnityAction SetSeeTheFutureAction;
+    public static void SeeTheFutureDeck()
+    {
+        SC_Deck _deck = SC_GameData.Instance.GetContainer(Containers.Deck) as SC_Deck;
+        if (_deck == null)
+        {
+            Debug.LogError("Failed to See The Future! deck is null");
+            return;
+        }
+        _deck.SeeTheFuture(depth);
+        SC_GameLog.Instance.AddMessege($"{SC_GameLogic.Instance.currentPlayer} Played See The Future");
+    }
 
     #endregion
-
 }

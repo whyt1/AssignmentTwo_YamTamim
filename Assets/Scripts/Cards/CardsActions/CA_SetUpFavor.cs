@@ -7,7 +7,7 @@ internal class SetUpFavor : PlayAction
 
     public SetUpFavor(SC_Card _card) : base(_card)
     {
-        Debug.Log($"<color=blue>Assgined {_card} with SetUp Shuffle</color>");
+        // Debug.Log($"<color=blue>Assgined {_card} with SetUp Shuffle</color>");
         onClickUp += SetFavorAction;
         onClickUp += () => ChangeButtonAction(null);
         onClickUp += () => ChangeButtonText("Click player to ask favor!");

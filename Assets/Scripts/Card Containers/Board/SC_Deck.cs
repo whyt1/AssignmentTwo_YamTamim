@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 public class SC_Deck : CardContainer
@@ -70,22 +69,29 @@ public class SC_Deck : CardContainer
     /// </summary>
     private void OnDefuse() 
     {
-        if (bomb != null && Tail != null && Head != null)
+        if (bomb != null)
         {
             // if bomb not near the deck return.
             if (!BombNearDeck()) { return; }
+            // if deck is empty just plant bomb
+            if (Tail == null && Head == null) {
+                toNextForBomb = null;
+                CheckBombPlanted();
+                return;
+            }
             // if bomb below deck, move all card up and return.
             if (BombBelowDeck()) {
                 toNextForBomb = Tail;
-                CheckBombPlanted();
             }
             // if bomb is above Ceiling, move all cards down and return
             if (BombAboveCeiling()) { 
                 toNextForBomb = null;
-                CheckBombPlanted();
             }
             // if the deck is on top, return to avoid issues with moving cards unnecessarily 
-            if (DeckOnTop) { return; }
+            if (DeckOnTop) { 
+                CheckBombPlanted();
+                return; 
+            }
             // set up next card to move if null or head
             if (currentMoving == null || currentMoving == Head) { currentMoving = Head.Prev; }
             // move cards as needed according to where the bomb is
@@ -116,6 +122,7 @@ public class SC_Deck : CardContainer
             PropagateUpdatesToHead(bomb.Prev != null ? bomb.Prev : bomb);
             Debug.Log("change state to end turn");
             SC_GameLogic.Instance.ChangeState(GameStates.MyEndTurn);
+            isBombPlanted = false;
         }
     }
 

@@ -8,7 +8,7 @@ public class DrawCard : CardAction
 
     public DrawCard(SC_Card _card) : base(_card)
     {
-        Debug.Log($"<color=green>Assgined {_card} with Draw Card Action</color>");
+        // Debug.Log($"<color=green>Assgined {_card} with Draw Card Action</color>");
         onClickDown += StartDrag;
         onClickDown += MoveToCenter;
         onClickUp += EndDrag;
@@ -31,6 +31,7 @@ public class DrawCard : CardAction
                 // game state transtion to end turn
                 MoveToPlayerHand();
                 SC_GameLogic.Instance.ChangeState(GameStates.MyEndTurn);
+                SC_GameLog.Instance.AddMessege($"{SC_GameLogic.Instance.currentPlayer} drew a card");
                 return;
             }
 
@@ -38,6 +39,7 @@ public class DrawCard : CardAction
             // move bomb to center
             card.ChangeHome(Containers.Center);
             SC_GameLogic.Instance.ChangeState(GameStates.MyDefuse);
+            SC_GameLog.Instance.AddMessege($"{SC_GameLogic.Instance.currentPlayer} exploded");
 
             // Check if player has defuse in hand
             if (!CheckHandForDefuses())

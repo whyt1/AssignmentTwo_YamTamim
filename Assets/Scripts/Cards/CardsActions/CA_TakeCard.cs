@@ -45,7 +45,10 @@ public class TakeCard : CardAction
                 ChangeStateToMyPlayOrDraw();
             }
             else { ChangeStateToMyTakeAction(); }
-
+            if (oldHome != Containers.Center) {
+                SC_GameLog.Instance.AddMessege($"{SC_GameLogic.Instance.currentPlayer} Stole a card from {oldHome}");
+            }
+            
         }
         // take cancel
         else

@@ -30,7 +30,12 @@ public class CardAction
             return;
         }
         card = _card;
-        Action = this.GetType().Name;
+        Action = ToString();
+    }
+
+    public override string ToString()
+    {
+        return this.GetType().Name;
     }
 
     #endregion

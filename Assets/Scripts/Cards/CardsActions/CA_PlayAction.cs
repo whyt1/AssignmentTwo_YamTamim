@@ -14,7 +14,7 @@ public class PlayAction : CardAction // abstract
     {
         // bomb cards are not playable like that
         if (card.Type == CardTypes.Exploding) { return; }
-        Debug.Log($"<color=blue>Assgined {_card} with Play Card Action</color>");
+        // Debug.Log($"<color=blue>Assgined {_card} with Play Card Action</color>");
         onClickDown += StartDrag;
         onClickDown += MoveToCenter;
         onClickUp += EndDrag;

@@ -9,7 +9,7 @@ public class Attack : PlayAction
 
     public Attack(SC_Card _card) : base(_card)
     {
-        Debug.Log($"<color=blue>Assgined {_card} with Attack</color>");
+        // Debug.Log($"<color=blue>Assgined {_card} with Attack</color>");
         onClickUp += () => ChangeButtonAction(() => {
             SC_GameLogic.Instance.OnEndTurn();
             SC_GameLogic.Instance.attackStack++;

@@ -146,7 +146,7 @@ public class CardView // : ScriptableObject
     // Position
     public bool IsDragged {
         get => isDragged;
-        set { isDragged = value; isHovered = false; UpdateSortOrder(); }
+        set { isDragged = value; isHovered = false; UpdateSortOrder(); SetCurrentPosition(TargetPosition); }
     }
     /// <summary>
     /// Triggers movment to given position 

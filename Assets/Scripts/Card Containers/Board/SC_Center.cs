@@ -55,7 +55,7 @@ public class SC_Center : CardContainer
             stackDirection = new(1, -0.3f),
             OnHoverOffset = Vector2.up/3,
 
-            Ceiling = new(1, 3),
+            Ceiling = new(1, 0.3f),
             Origin = new(-0.4f, 0.3f),
             offsetDistance = 0.3f,
 

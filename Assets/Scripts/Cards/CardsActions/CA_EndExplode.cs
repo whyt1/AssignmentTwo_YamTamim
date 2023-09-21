@@ -19,8 +19,10 @@ internal class EndExplode : CardAction
         }
         if (_deck.BombNearDeck())
         {
-            Debug.Log("<color=red>Bomb Planted!</color>");
-            _deck.isBombPlanted = true; 
+            _deck.isBombPlanted = true;
+            // exploding resets attack
+            SC_GameLogic.Instance.attackStack = 0;
+            SC_GameLog.Instance.AddMessege($"{SC_GameLogic.Instance.currentPlayer} defused the bomb");
         }
     }
 

@@ -66,8 +66,11 @@ public class SC_GameData : MonoBehaviour
         for (int i = n - 1; i >= 0; i--)
         {
             GameObject _char = new("char_" + (i + 1)); 
-            _char.transform.position = screenSize + Vector2.one;
-            _char.InitComponent<SpriteRenderer>().sprite = Resources.Load<Sprite>("Sprites/Characters/Sprite_Character_" + (i + 1));
+            _char.transform.position = new(screenSize.x+1, screenSize.y+1, 90);
+            SpriteRenderer charSprite = _char.InitComponent<SpriteRenderer>();
+            if (charSprite == null) { Debug.LogError("Failed to get characther sprite! sprite renderer is null."); continue; }
+            charSprite.sprite = Resources.Load<Sprite>("Sprites/Characters/Sprite_Character_" + (i + 1));
+            charSprite.sortingOrder = -1;
             characters.Add(_char);
         }
         return characters;

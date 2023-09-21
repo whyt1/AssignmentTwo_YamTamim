@@ -4,7 +4,7 @@ using UnityEngine;
 /// Used in a card to set if it's playable and update it's action when clicked or dropped
 /// </summary>
 [Serializable]
-public class ActionManager
+public class ActionManager : MonoBehaviour
 {
     #region IDEA
     // invoke action:
@@ -29,23 +29,23 @@ public class ActionManager
     [SerializeField]
     private int ForRetrieveDiscarded;
 
-    private SC_Card card;
+    public SC_Card card;
 
     #endregion
 
-    #region Constractor
+    #region MonoBehaviour
 
-    public ActionManager(SC_Card _card)
+    void OnEnable()
     {
-        card = _card;
         Subscribe();
         ForRandomSteal = 2;
         ForSpecificSteal = 3;
         ForRetrieveDiscarded = 5;
-}
+    }
 
-    ~ActionManager()
+    void OnDisable()
     {
+        card = null;
         Unsubscribe();
     }
 
@@ -53,6 +53,7 @@ public class ActionManager
 
     #region Properties
 
+    private CardTypes Type { get => card != null ? card.Type : CardTypes.error; }
     private Containers Home { get => card != null ? card.Home : Containers.error; }
     private void SetAction(CardAction _action) 
     { 
@@ -60,6 +61,7 @@ public class ActionManager
             Debug.LogError("Failed to Set Card Action! card is null. problem with action manager constractor in card initializtion."); 
             return; 
         }
+        if (_action != null) { Debug.Log($"set action: <color=green>{_action}</color> \nfor card: {card}"); }
         card.action = _action;
     } 
     private GameStates CurrentState { get => SC_GameLogic.Instance.currentState; } // get the current game state from state machine or game logic 
@@ -77,6 +79,8 @@ public class ActionManager
         SetUpFavor.SetFavorAction += SetFavorAction;
         SetUpRandomSteal.SetRandomStealAction += SetRandomStealAction;
         SetUpGive.SetGiveAction += SetGiveAction;
+        SetUpRetrieveDiscarded.SetRetrieveDiscardedAction += SetRetrieveDiscardedAction;
+        SetUpSpecificSteal.SetSpecificStealAction += SetSpecificStealAction;
     }
     private void Unsubscribe()
     {
@@ -86,12 +90,14 @@ public class ActionManager
         SetUpFavor.SetFavorAction -= SetFavorAction;
         SetUpRandomSteal.SetRandomStealAction -= SetRandomStealAction;
         SetUpGive.SetGiveAction -= SetGiveAction;
+        SetUpRetrieveDiscarded.SetRetrieveDiscardedAction -= SetRetrieveDiscardedAction;
+        SetUpSpecificSteal.SetSpecificStealAction += SetSpecificStealAction;
     }
 
     private void OnStateTransition(GameStates newState)
     {
         // start with a clean plate 
-        ResetCardAction();
+        SetAction(null);
 
         if (newState == GameStates.MyPlayOrDraw)
         {
@@ -102,7 +108,7 @@ public class ActionManager
             }
             // in deck draw (for head)
             if (Home == Containers.Deck && CheckForDraw()) {
-                card.action = new DrawCard(card);
+                SetAction(new DrawCard(card));
                 return;
             }
         }
@@ -114,24 +120,31 @@ public class ActionManager
             }
             // in center take back (if last one go back to my play or draw)
             if (Home == Containers.Center) {
-                card.action = new TakeCard(card);
+                SetAction(new TakeCard(card));
             }
             // change state happens before action effect 
             // everywhere else set in action, shuffle -> deck cards shuffle, steal -> others hand steal.
         }
         if (newState == GameStates.MyDefuse)
         {
+            // all done in the actions
             // set defuse action for defuses in hand, set bomb action for the bomb in center. 
             // move defuse stright to discards to keep bomb alone in center
         }
         if (newState == GameStates.MyEndTurn)
         {
+            // all done in the actions
             // everything has no action, maybe have the option to hover? 
             // next turn button clickable
         }
         if (newState == GameStates.OthersTakeAction)
         {
-            // can use nope
+            /*
+            if (CheckForNope())
+            {
+                SetAction(new Nope(card));
+            }
+            */
         }
         else
         {
@@ -142,6 +155,11 @@ public class ActionManager
     #endregion
 
     #region Conditions Checks
+
+    private bool CheckForNope()
+    {
+        return (Home == Containers.PlayerHand && Type == CardTypes.Nope);
+    }
 
     private bool CheckForDraw()
     {
@@ -155,11 +173,7 @@ public class ActionManager
             return false;
         }
 
-        if (_deck.Head == card)
-        {
-            return true;
-        }
-        else { return false; }
+        return _deck.Head == card;
     }
 
     private bool CheckForRandomSteal()
@@ -183,7 +197,7 @@ public class ActionManager
         SC_Card _tempCard = CardsInPlay.Head;
         for (int i = 0; i < CardsInPlay.count && _tempCard != null; i++)
         {
-            if (_tempCard.Type != card.Type)
+            if (_tempCard.Type != Type)
             {
                 return false;
             }
@@ -192,14 +206,16 @@ public class ActionManager
         return true;
     }
 
-    private bool CheckForRetrieveDiscarded()
+    /// <summary>
+    /// Goes over the cards in play to check if the are different then current card type
+    /// </summary>
+    /// <returns>All cards different -> True. At least one card is matching -> False.</returns>
+    private bool CheckDifferentType()
     {
-        if (CardsInPlay.count != ForRetrieveDiscarded - 1) { return false; }
-        // looking for different types, if same type card exit
         SC_Card _tempCard = CardsInPlay.Head;
         for (int i = 0; i < CardsInPlay.count && _tempCard != null; i++)
         {
-            if (_tempCard.Prev != null && _tempCard.Type == _tempCard.Prev.Type || _tempCard.Type == card.Type)
+            if (_tempCard.Prev != null && _tempCard.Type == _tempCard.Prev.Type || _tempCard.Type == Type)
             {
                 return false;
             }
@@ -208,30 +224,31 @@ public class ActionManager
         return true;
     }
 
+    /*
+    private bool CheckForRetrieveDiscarded()
+    {
+        return (CardsInPlay.count == ForRetrieveDiscarded - 1 &&
+                CheckDifferentType());
+    }
+    */
+
     private bool CheckOpponentHand()
     {
-        return (card.Home == Containers.OpponentHand1 ||
-                card.Home == Containers.OpponentHand2 ||
-                card.Home == Containers.OpponentHand3 ||
-                card.Home == Containers.OpponentHand4);
+        return (Home == Containers.OpponentHand1 ||
+                Home == Containers.OpponentHand2 ||
+                Home == Containers.OpponentHand3 ||
+                Home == Containers.OpponentHand4);
     }
 
     #endregion
 
     #region Set Card Actions
-
-    public void ResetCardAction()
-    {
-        if (card == null) { Debug.LogError("Failed to Reset Card Action! card is null."); return; }
-        // Debug.Log($"Resetting card action for {card}");
-        card.action = null; 
-    }
     
     private void SetDefaultAction()
     {
         if (card == null) { Debug.LogError("Failed to Set Card Action! card is null."); return; }
 
-        card.action = card.Type switch
+        SetAction(Type switch
         {
             CardTypes.Seethefuture => new SetUpSeeTheFuture(card),
             CardTypes.Shuffle => new SetUpShuffle(card),
@@ -239,7 +256,7 @@ public class ActionManager
             CardTypes.Attack => new Attack(card),
             CardTypes.Skip => new Skip(card),
             _ => new PlayAction(card),// general cards dont have a default action but can be played as part of a combo
-        };
+        });
     }
 
     private void SetComboAction()
@@ -247,19 +264,24 @@ public class ActionManager
         // if cards in play match the condition, action set to start random steal
         if (CheckForRandomSteal())
         {
-            card.action = new SetUpRandomSteal(card); 
+            SetAction(new SetUpRandomSteal(card)); 
         }
 
         // Checking if cards in play match the condition, action set to start specific steal
         else if (CheckForSpecificSteal())
         {
-            card.action = new PlayAction(card); // StartSpecificSteal;
+            SetAction(new SetUpSpecificSteal(card));
         }
 
-        // Checking if cards in play match the condition, action set to start retrieving a discarded card
-        else if (CheckForRetrieveDiscarded())
+        // Can play cards of different type to stack up for combo
+        else if (CheckDifferentType() && CardsInPlay.count < ForRetrieveDiscarded)
         {
-            card.action = new PlayAction(card); // StartRetrieveDiscarded;
+            SetAction(new PlayAction(card));
+            // Checking if cards in play match the condition, action set to start retrieving a discarded card
+            if (CardsInPlay.count == ForRetrieveDiscarded - 1)
+            {
+                SetAction(new SetUpRetrieveDiscarded(card)); 
+            }
         }
     }
 
@@ -267,7 +289,7 @@ public class ActionManager
     {
         if (Home == Containers.PlayerHand)
         {
-            card.action = new GiveCard(card);
+            SetAction(new GiveCard(card));
         }
     }
 
@@ -275,14 +297,14 @@ public class ActionManager
     {
         if (Home == Containers.Deck)
         {
-            card.action = new Shuffle(card);
+            SetAction(new Shuffle(card));
         }
     }
     private void SetSeeTheFutureAction()
     {
         if (Home == Containers.Deck)
         {
-            card.action = new SeeTheFuture(card);
+            SetAction(new SeeTheFuture(card));
         }
     }
 
@@ -290,7 +312,7 @@ public class ActionManager
     {
         if (CheckOpponentHand())
         {
-            card.action = new Favor(card);
+            SetAction(new Favor(card));
         }
     }
 
@@ -298,21 +320,25 @@ public class ActionManager
     {
         if (CheckOpponentHand())
         {
-            card.action = new TakeCard(card);
+            SetAction(new TakeCard(card));
         }
     }
 
     private void SetSpecificStealAction()
     {
-
+        if (CheckOpponentHand())
+        {
+            SetAction(new SpecificSteal(card));
+        }
     }
 
     private void SetRetrieveDiscardedAction()
     {
-
+        if (Home == Containers.Discards)
+        {
+            SetAction(new TakeCard(card));
+        }
     }
-
-    private void SetNopeAction() { }
 
     #endregion
 }

@@ -88,7 +88,7 @@ public abstract class CardContainer : MonoBehaviour
     {
         if (Tail == null || Head == null)
         {
-            Debug.LogError("Failed to SetUpShuffle! list is empty? tail or head null");
+            Debug.LogError("Failed to Shuffle! list is empty? tail or head null");
         }
         SC_Card current, random, next;
         int i = 0;

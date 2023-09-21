@@ -11,7 +11,7 @@ public class SetUpRandomSteal : PlayAction
         Debug.Log($"<color=blue>Assgined {_card} with SetUp Random Steal</color>");
         onClickUp += SetRandomStealAction;
         onClickUp += () => ChangeButtonAction(null);
-        onClickUp += () => ChangeButtonText("Click player to steal a card!");
+        onClickUp += () => ChangeButtonText("Steal a card!");
     }
 
     #endregion

@@ -13,11 +13,11 @@ public class Defuse : CardAction
     public Defuse(SC_Card _card) : base(_card)
     {
         Debug.Log($"<color=red>Set Defuse Action for {_card}</color>");
-        onClickUp += MoveToDiscards;
-        onClickUp += StartDefuse;
         onClickDown += StartDrag;
         onClickUp += EndDrag;
         onClickUp += () => ChangeButtonText("Plant The Bomb!");
+        onClickUp += StartDefuse;
+        onClickUp += MoveToDiscards;
     }
 
     #endregion
