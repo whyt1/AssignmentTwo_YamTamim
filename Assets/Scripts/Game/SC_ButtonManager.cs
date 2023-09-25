@@ -1,5 +1,6 @@
 using System;
 using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
@@ -18,12 +19,14 @@ public class SC_ButtonManager : MonoBehaviour
     {
         SC_GameLogic.OnStateTransition += OnStateTransition;
         CardAction.OnChangeButton += OnChangeButton;
+        SC_MultiplayerLogic.OnChangeButton += OnChangeButton;
         SC_GameLogic.OnYouWin += OnYouWin;
     }
     void OnDisable()
     {
         SC_GameLogic.OnStateTransition -= OnStateTransition;
         CardAction.OnChangeButton -= OnChangeButton;
+        SC_MultiplayerLogic.OnChangeButton -= OnChangeButton;
         SC_GameLogic.OnYouWin -= OnYouWin;
     }
     void Awake()
@@ -56,12 +59,6 @@ public class SC_ButtonManager : MonoBehaviour
                 ChangeButtonText("ERROR! \nClick to Restart");
                 return;
             case GameStates.MyPlayOrDraw:
-                SC_Deck _deck = SC_GameData.Instance.GetContainer(Containers.Deck) as SC_Deck;
-                if (_deck == null)
-                {
-                    Debug.LogError("Failed to end explode! deck is null");
-                    return;
-                }
                 ChangeButtonAction(null);
                 ChangeButtonText("Play Cards \nOr Draw");
                 return;
@@ -114,11 +111,11 @@ public class SC_ButtonManager : MonoBehaviour
 
         myButton.onClick.RemoveAllListeners();
         if (onClickAction != null) {
-            myButton.enabled = true;
+            myButton.interactable = true;
             myButton.onClick.AddListener(onClickAction);
         }
         else {
-            myButton.enabled = false;   
+            myButton.interactable = false;   
         }
     }
 

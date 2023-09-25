@@ -2,7 +2,10 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using TMPro;
 using UnityEngine;
+using UnityEngine.TextCore.Text;
+using UnityEngine.UIElements;
 
 public class SC_GameLogic : MonoBehaviour
 {
@@ -16,13 +19,14 @@ public class SC_GameLogic : MonoBehaviour
     [SerializeField]
     public GameStates currentState;
     public Containers currentPlayer;
+    public List<User> users;
     public List<Containers> players;
     public List<GameObject> characters;
     public List<GameObject> gameOverCharacters;
     private float otherPlayersDelay;
     public bool isGiveDone;
     private bool isInitalized;
-
+    private int backgroundSortOrder;
     #endregion
 
     #region Singleton
@@ -51,15 +55,25 @@ public class SC_GameLogic : MonoBehaviour
     #region MonoBehaviour
     void OnEnable()
     {
-        // SC_MenuController.OnStartGame += OnStartGame;
+        SC_MenuController.OnAdjustNumberOfPlayers += OnAdjustNumberOfPlayers;
     }
     void OnDisable()
-    {
-        // SC_MenuController.OnStartGame -= OnStartGame;
+    { 
+        SC_MenuController.OnAdjustNumberOfPlayers -= OnAdjustNumberOfPlayers;
     }
+
     void Start()
     {
         InitVariables();
+    }
+
+    #endregion
+
+    #region Events
+
+    private void OnAdjustNumberOfPlayers(int _numberOfPlayers)
+    {
+        numberOfPlayers = _numberOfPlayers;
     }
 
     #endregion
@@ -68,16 +82,44 @@ public class SC_GameLogic : MonoBehaviour
 
     private void InitVariables()
     {
+        backgroundSortOrder = -1;
         attackStack = 0;
         otherPlayersDelay = 1;
         startingHandSize = 6;
+        users = new();
         InitPlayers();
-        InitCharacters();
         InitCardTypes();
     }
+
+    public void AddUser(User _user)
+    {
+        if (_user == null)
+        {
+            Debug.LogError("Failed to add user! user is null.");
+            return;
+        }
+        if (users == null || users.Count == 0) {
+            users = new()
+            {
+                SC_GameData.Instance.user
+            };
+            buildCharacter(SC_GameData.Instance.user.Avatar, SC_GameData.Instance.user.Name);
+            if (_user.ToString().Equals(SC_GameData.Instance.user.ToString())) {
+                return;
+            }
+        }
+        users.Add(_user);
+        numberOfPlayers = users.Count;
+        if (characters == null || characters.Count == 0) { 
+            characters = new();
+        }
+        buildCharacter(_user.Avatar, _user.Name);
+        PositionPlayers();
+    }
+
     private void InitPlayers()
     {
-        numberOfPlayers = 5;
+        numberOfPlayers = 3;
         players = new List<Containers> { Containers.PlayerHand, Containers.OpponentHand1, Containers.OpponentHand2, Containers.OpponentHand3, Containers.OpponentHand4, };
         currentPlayer = players[0];
     }
@@ -86,14 +128,61 @@ public class SC_GameLogic : MonoBehaviour
         // characters already initialized
         if (characters != null && characters.Count != 0) { return; }
 
-        gameOverCharacters = new();
-        characters = SC_GameData.Instance.Characters(numberOfPlayers);
-        for (int i = numberOfPlayers - 1; i >= 0; i--)
-        {
+        List<Sprite> _sprites = new List<Sprite>();
+        for (int i = 1; i < SC_GameData.Instance.NumberOfChars; i++) {
+            Sprite _sprite = SC_GameData.Instance.GetCharacterSprite(i);
+            if (_sprite != null) {  _sprites.Add(_sprite); }
+        }
+        for (int i = _sprites.Count - 1; i >= 0; i--) {
             int j = UnityEngine.Random.Range(0, i + 1);
-            (characters[i], characters[j]) = (characters[j], characters[i]);
+            (_sprites[i], _sprites[j]) = (_sprites[j], _sprites[i]);
+        }
+        if (_sprites.Count < numberOfPlayers) {
+            Debug.LogError($"Failed to init characters! not enough char sprites for players. \n" +
+                           $"{_sprites.Count} < {numberOfPlayers}");
+            return;
+        }
+
+        gameOverCharacters = new();
+        characters = new();
+        GameObject _characters = SC_GameData.Instance.GetUnityObject("Characters");
+        if (_characters != null) { _characters.SetActive(true); } 
+        for (int i = 0; i < numberOfPlayers; i++)
+        {
+            buildCharacter(i);
         }
     }
+
+    private void buildCharacter(int _spriteIndex, string _name = null)
+    {
+        GameObject _characters = SC_GameData.Instance.GetUnityObject("Characters");
+        if (_characters != null && !_characters.activeSelf) { _characters.SetActive(true); }
+
+        Sprite _sprite = SC_GameData.Instance.GetCharacterSprite(_spriteIndex);
+        if (_sprite == null) {
+            Debug.LogError("Failed to build Character!, couldn't get sprite for index: " + _spriteIndex);
+            return;
+        }
+
+        GameObject _char = new(_sprite.name, typeof(SpriteRenderer));
+        if (name == null) { return; }
+        GameObject _charName = Instantiate(Resources.Load<GameObject>("Prefabs/Name_UserName"));
+        _charName.name = "Txt_" + _name;
+        TextMeshPro _text = _charName.GetComponent<TextMeshPro>();
+        _text.text = _name;
+
+        _charName.transform.SetParent(_char.transform);
+        SpriteRenderer _renderer = _char.GetComponent<SpriteRenderer>();
+        _renderer.sprite = _sprite;
+        _renderer.sortingOrder = backgroundSortOrder;
+
+        _char.transform.SetParent(_characters != null ? _characters.transform : null);
+        _char.transform.localPosition = SC_GameData.Instance.screenSize + Vector2.one;
+        // _char.transform.GetChild(0).localPosition = new(0, 0.75f);
+        characters.Add(_char); 
+
+    }
+
     private void InitCardTypes()
     {
         GameObject cardTypes = SC_GameData.Instance.GetUnityObject("CardTypes");
@@ -129,7 +218,7 @@ public class SC_GameLogic : MonoBehaviour
     /// </summary>
     private void PositionPlayers()
     {
-        for (int i = 0; i< numberOfPlayers; i++)
+        for (int i = 1; i < numberOfPlayers; i++)
         {
             CardContainer hand = SC_GameData.Instance.GetContainer(players[i]);
             if (hand == null) {
@@ -146,22 +235,20 @@ public class SC_GameLogic : MonoBehaviour
     /// </summary>
     private void PositionCharacters(GameObject character, CardContainer hand)
     {
-        if (hand.CS.Origin.x > 0)
-        {
-            if (character.name.Contains("1") || character.name.Contains("3") || character.name.Contains("5"))
-            {
-                character.transform.localScale = new(-1,1,1);
-            }
-            character.transform.position = hand.CS.Origin + Vector2.up/2 + Vector2.right;
+        if (!int.TryParse(character.name.Split('_')[2], out int charIndex)) {
+            Debug.LogError($"Failed to get character index! character name: {character.name}");
+            return;
         }
-        else
+        if ((hand.CS.Origin.x > 0 && charIndex % 2 == 1) || hand.CS.Origin.x <=0 && charIndex % 2 == 0)
         {
-            if (character.name.Contains("2") || character.name.Contains("4"))
-            {
-                character.transform.localScale = new(-1, 1, 1);
-            }
-            character.transform.position = hand.CS.Origin + Vector2.up;
+            character.transform.localScale = new(-1,1,1);
+            character.transform.GetChild(0).localScale = new(-Mathf.Abs(character.transform.GetChild(0).localScale.x), 
+                                                              character.transform.GetChild(0).localScale.y,
+                                                              character.transform.GetChild(0).localScale.z);
+            
         }
+        character.transform.position = hand.CS.Origin + Vector2.up + (hand.CS.Origin.x > 0 ? Vector2.right : Vector2.zero);
+        character.transform.GetChild(0).localPosition = new(0, 0.75f); // remove magic numbers
     }
 
 
@@ -174,8 +261,9 @@ public class SC_GameLogic : MonoBehaviour
         if (isInitalized)
         {
             ClearGameWorld();
+            InitVariables();
         }
-        InitVariables();
+        InitCharacters();
         PositionPlayers();
         SC_Deck deck = SC_GameData.Instance.GetContainer(Containers.Deck) as SC_Deck;
         if (deck == null)
@@ -280,7 +368,8 @@ public class SC_GameLogic : MonoBehaviour
             Debug.LogError("Failed to change sprite on death! character is null.");
             return;
         }
-        character.InitComponent<SpriteRenderer>().sprite = Resources.Load<Sprite>("Sprites/Sprite_GameOver");
+        SpriteRenderer _renderer = character.InitComponent<SpriteRenderer>();
+        _renderer.sprite = SC_GameData.Instance.GetCharacterSprite(0);
         players.Remove(player.CS.Container);
         characters.Remove(character);
         gameOverCharacters.Add(character);  

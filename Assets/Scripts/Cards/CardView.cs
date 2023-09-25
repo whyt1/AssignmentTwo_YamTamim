@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using Unity.VisualScripting.FullSerializer;
 using UnityEngine;
 /// <summary>
 /// <see cref="SC_Card"/> Used in card to set face and update position
@@ -39,9 +38,9 @@ public class CardView // : ScriptableObject
     [Space]
     [Header("Sorting Order")]
     [SerializeField]
-    public static readonly int frontSortingOrder = 60;
+    public int frontSortingOrder;
     [SerializeField]
-    public static readonly int frontZ = 60;
+    public int frontZ;
     [SerializeField]
     private int sortOrder;
     [SerializeField]
@@ -113,7 +112,8 @@ public class CardView // : ScriptableObject
         fallBackDelay = 0.25f;
         fixPerspective = true;
         perspectiveScaler = 0.5f;
-
+        frontSortingOrder = 90;
+        frontZ = 90;
         epsilon = 0.001f;
         dragSpeed = 10f;
         repositionSpeed = 7.5f;

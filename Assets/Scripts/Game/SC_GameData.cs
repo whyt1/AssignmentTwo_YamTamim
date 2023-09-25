@@ -32,9 +32,14 @@ public class SC_GameData : MonoBehaviour
     /// </summary>
     private Dictionary<Containers, CardContainer> gameWorld;
 
+    /// <summary>
+    /// Holds all the possible characters sprites, used for setting avatars for players
+    /// </summary>
+    private Dictionary<int, Sprite> characters;
+
     public Vector2 screenSize;
 
-    List<GameObject> characters;
+    public User user;
 
     #endregion
 
@@ -60,20 +65,17 @@ public class SC_GameData : MonoBehaviour
 
     #region API
 
-    public List<GameObject> Characters(int n) 
+    public int NumberOfChars { get => characters != null ? (characters.Count - 1) : -1; }
+
+    public Sprite GetCharacterSprite(int i) 
     {
-        characters = new List<GameObject>();
-        for (int i = n - 1; i >= 0; i--)
-        {
-            GameObject _char = new("char_" + (i + 1)); 
-            _char.transform.position = new(screenSize.x+1, screenSize.y+1, 90);
-            SpriteRenderer charSprite = _char.InitComponent<SpriteRenderer>();
-            if (charSprite == null) { Debug.LogError("Failed to get characther sprite! sprite renderer is null."); continue; }
-            charSprite.sprite = Resources.Load<Sprite>("Sprites/Characters/Sprite_Character_" + (i + 1));
-            charSprite.sortingOrder = -1;
-            characters.Add(_char);
+        if (characters == null)  {
+            Debug.LogError("Failed to Get Character Sprite! CharacterSprite dict is not initialized.");
+            return null;
         }
-        return characters;
+        if (characters.ContainsKey(i))
+            return characters[i];
+        return null;
     } 
 
     public List<GameObject> UnityObjects { get => new(unityObjects.Values); }
@@ -141,10 +143,12 @@ public class SC_GameData : MonoBehaviour
 
     void Awake()
     {
-        screenSize = new(Camera.main.aspect * Camera.main.orthographicSize, Camera.main.orthographicSize);
         InitGameWorld();
         InitUnityObjects();
         InitCardsData();
+        InitCharactersSprites();
+        screenSize = new(Camera.main.aspect * Camera.main.orthographicSize, Camera.main.orthographicSize);
+        user = new();
     }
 
     void Update()
@@ -185,6 +189,25 @@ public class SC_GameData : MonoBehaviour
 
             if (s.name.Contains("cardback")) { continue; }
             CardNames.Add(s.name.Replace("Sprite_", "Card_"));
+        };
+    }
+
+    private void InitCharactersSprites()
+    {
+        characters = new();
+        Sprite[] _temp = Resources.LoadAll<Sprite>("Sprites/Characters");
+        foreach (Sprite s in _temp)
+        {
+            if (s.name == null || !s.name.Contains('_') ||
+                !int.TryParse(s.name.Split('_')[2], out int _key))
+            {
+                Debug.LogError("invalid Character sprite name " + s.name);
+                continue; 
+            }
+            if (characters.ContainsKey(_key)) {
+                Debug.LogError("Duplicate Character sprite");
+            }
+            else { characters.Add(_key, s); }
         };
     }
 

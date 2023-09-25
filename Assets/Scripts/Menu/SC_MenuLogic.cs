@@ -1,15 +1,14 @@
-using System;
+using AssemblyCSharp;
 using System.Collections.Generic;
 using UnityEngine;
-using static SC_MenuController;
-
+using UnityEngine.UI;
 public class SC_MenuLogic : MonoBehaviour
 {
    
     #region Variables
     public enum Screens
     {
-        MainMenu, Loading, Options, StudentInfo, Multiplayer, Previous, Game
+        MainMenu, Searching, Options, StudentInfo, Multiplayer, SinglePlayer, Previous, Game
     };
     private Stack<Screens> ScreensStack;
     #endregion
@@ -17,18 +16,22 @@ public class SC_MenuLogic : MonoBehaviour
     #region MonoBehaviour
     void OnEnable()
     {
-        SC_MenuController.OnStartGame += OnStartGame;
+        SC_MultiplayerLogic.OnJoinRoomSuccess += OnJoinRoomSuccess;
         SC_MenuController.OnChangeScreen += OnChangeScreen;
         SC_MenuController.OnOpenLink += OnOpenLink;
         SC_MenuController.OnAdjustVolume += OnAdjustVolume;
+        SC_MenuController.OnChooseAvatar += OnChooseAvatar;
     }
+
     void OnDisable()
     {
-        SC_MenuController.OnStartGame -= OnStartGame;
+        SC_MultiplayerLogic.OnJoinRoomSuccess -= OnJoinRoomSuccess;
         SC_MenuController.OnChangeScreen -= OnChangeScreen;
         SC_MenuController.OnOpenLink -= OnOpenLink;
         SC_MenuController.OnAdjustVolume -= OnAdjustVolume;
+        SC_MenuController.OnChooseAvatar -= OnChooseAvatar;
     }
+
     void Awake()
     {
         InitVariables();
@@ -56,9 +59,9 @@ public class SC_MenuLogic : MonoBehaviour
     {
         try
         {
-            return (Screens)Enum.Parse(typeof(Screens), _screenStr);
+            return (Screens)System.Enum.Parse(typeof(Screens), _screenStr);
         }
-        catch (Exception e)
+        catch (System.Exception e)
         {
             Debug.LogError("Fail to convert: " + e.ToString());
             return ScreensStack.Pop();
@@ -66,17 +69,13 @@ public class SC_MenuLogic : MonoBehaviour
     }
     #endregion
 
-    #region Events
-    private void OnStartGame()
+    #region Events 
+    
+    private void OnJoinRoomSuccess()
     {
-        var GameWorld = SC_GameData.Instance.GetUnityObject("GameWorld");
-        if (GameWorld == null){
-            Debug.LogError("Failed to Start Game! GameWorld is null in menu logic");
-            return;
-        }
-        GameWorld.SetActive(true);
         OnChangeScreen("Game");
     }
+
     private void OnChangeScreen(string _screen)
     {
         Screens _toScreen = ParseScreens(_screen);
@@ -90,6 +89,30 @@ public class SC_MenuLogic : MonoBehaviour
         }
         else { ScreensStack.Push(_toScreen); }
 
+        // should be in view managar
+        if (_toScreen == Screens.Multiplayer)
+        {
+            GameObject _char1 = SC_GameData.Instance.GetUnityObject("Sprite_Character_Searching");
+            GameObject _char = SC_GameData.Instance.GetUnityObject("Sprite_Character");
+            if (_char == null || _char1 == null)
+            {
+                Debug.LogError("Sprite_Character game object is null");
+                return;
+            }
+            _char.SetActive(true);
+            _char1.SetActive(true);
+            Image _image1 = _char1.GetComponent<Image>();
+            Image _image = _char.GetComponent<Image>();
+            if (_image == null || _image1 == null)
+            {
+                Debug.LogError("Sprite_Character SpriteRenderer component is null");
+                return;
+            }
+            int currSprite = SC_GameData.Instance.user.Avatar;
+            _image.sprite = SC_GameData.Instance.GetCharacterSprite(currSprite);
+            _image1.sprite = SC_GameData.Instance.GetCharacterSprite(currSprite);
+        }
+
         if (SC_GameData.Instance.GetUnityObject("Screen_" + ScreensStack.Peek()) != null)
             SC_GameData.Instance.GetUnityObject("Screen_" + ScreensStack.Peek()).SetActive(true);
     }
@@ -99,6 +122,7 @@ public class SC_MenuLogic : MonoBehaviour
         // should validate the url to avoid security risk 
         Application.OpenURL(url);
     }
+
     private void OnAdjustVolume(float newVolume)
     {
         GameObject _camera = GameObject.Find("Main Camera");
@@ -112,6 +136,26 @@ public class SC_MenuLogic : MonoBehaviour
             return; 
         }
         _audioSource.volume = newVolume;
+    }
+
+    // should be in view managar
+    private void OnChooseAvatar(int _newSprite)
+    {
+        GameObject _char1 = SC_GameData.Instance.GetUnityObject("Sprite_Character_Searching");
+        GameObject _char2 = SC_GameData.Instance.GetUnityObject("Sprite_Character");
+        if (_char1 == null || _char2 == null) {
+            Debug.LogError("Sprite_Character game object is null");
+            return;
+        }
+        _char1.SetActive(true);
+        Image _image1 = _char1.GetComponent<Image>();
+        Image _image2 = _char2.GetComponent<Image>(); 
+        if (_image1 == null || _image2 == null)  {
+            Debug.LogError("Sprite_Character SpriteRenderer component is null or invalid sprite name");
+            return;
+        }
+        _image1.sprite = SC_GameData.Instance.GetCharacterSprite(_newSprite);
+        _image2.sprite = SC_GameData.Instance.GetCharacterSprite(_newSprite);
     }
     #endregion
 }

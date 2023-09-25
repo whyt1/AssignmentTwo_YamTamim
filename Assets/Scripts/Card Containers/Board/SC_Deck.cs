@@ -15,6 +15,8 @@ public class SC_Deck : CardContainer
     [SerializeField]
     private Vector2 seeOffset;
     [SerializeField]
+    private int seeSortOrder;
+    [SerializeField]
     private float seeTheFutureDelay = 0.5f;
     [SerializeField]
     private SC_Card seeTheFutureTemp;
@@ -288,7 +290,9 @@ public class SC_Deck : CardContainer
         };
 
         seePosition = new(0,0);
-        seeOffset = new(1,0);
+        seeOffset = new(1,0); 
+        seeSortOrder = 90;
+        seeTheFutureDelay = 0.5f;
         numberOfDefuses = 6;
         isBombPlanted = false;
         bombInsertRange = 2;
@@ -432,7 +436,7 @@ public class SC_Deck : CardContainer
         {
             seeTheFutureTemp.TargetPosition = seePosition + i * seeOffset;
             seeTheFutureTemp.TargetRotation = Vector3.zero;
-            seeTheFutureTemp.SortOrder = CardView.frontSortingOrder + i;
+            seeTheFutureTemp.SortOrder = seeSortOrder + i;
             seeTheFutureTemp.IsFaceUp = true;
             seeTheFutureTemp = seeTheFutureTemp.Prev;
 

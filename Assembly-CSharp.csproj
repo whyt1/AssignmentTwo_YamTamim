@@ -108,6 +108,7 @@
     <Compile Include="Assets\Scripts\Cards\CardsActions\CA_SetUpFavor.cs" />
     <Compile Include="Assets\Scripts\Card Containers\Hands\SC_OpponentHand3.cs" />
     <Compile Include="Assets\Scripts\Cards\CardsActions\SC_CardTypeChoice.cs" />
+    <Compile Include="Assets\Scripts\Multiplayer\User.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\TextMesh Pro\Shaders\TMPro.cginc" />

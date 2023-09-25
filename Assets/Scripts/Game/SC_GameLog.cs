@@ -97,7 +97,7 @@ public class SC_GameLog : MonoBehaviour
                 "make sure to connect a components in unity inspector.");
             return;
         }
-        Debug.Log(scrollRect.normalizedPosition.y);
+
         // Check if the scroll position is at the top
         if (scrollRect.normalizedPosition.y >= 1f)
         {
